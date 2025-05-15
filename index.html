@@ -82,208 +82,6 @@
     <div class="side-card total-entregue"><span class="lbl">Total Entregue</span><span class="valor" id="total-entregue">0</span></div>
     <div class="side-card total-clientes"><span class="lbl">Total de Clientes</span><span class="valor" id="total-clientes">0</span></div>
     <div class="search-panel">
-      <input type="text" id="busca" placeholder="&#128269; Buscar clientes...">
-      <div class="search-filtros">
-        <select id="filtro-status">
-          <option value="">Status</option>
-          <option value="realizando">Realizando</option>
-          <option value="entregue">Entregue</option>
-          <option value="novo">Novo</option>
-        </select>
-        <select id="filtro-prioridade">
-          <option value="">Prioridade</option>
-          <option value="alta">Alta</option>
-          <option value="media">Média</option>
-          <option value="baixa">Baixa</option>
-        </select>
-      </div>
-    </div>
-    <input type="file" id="import-file" accept=".json" style="display:none;">
-  </div>
-  <!-- Conteúdo principal -->
-  <div class="main-content">
-    <div class="cards-grid" id="clientes-grid"></div>
-    <!-- Modal -->
-    <div class="modal-bg" id="modal-novo" style="display:none;">
-      <div class="modal-content">
-        <button class="modal-close" onclick="fecharModal()">&times;</button>
-        <div class="modal-title">Adicionar Novo Cliente</div>
-        <form id="cliente-form-modal" autocomplete="off">
-          <input type="hidden" id="cliente-id-modal">
-          <div class="form-modal-row" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
-            <input type="text" id="nome-modal" required placeholder="Nome">
-            <input type="text" id="empresa-modal" placeholder="Empresa">
-            <input type="text" id="contato-modal" placeholder="WhatsApp">
-            <input type="number" id="valor-modal" min="0" step="0.01" placeholder="Valor">
-            <select id="prioridade-modal">
-              <option value="baixa">Prioridade Baixa</option>
-              <option value="media" selected>Prioridade Média</option>
-              <option value="alta">Prioridade Alta</option>
-            </select>
-            <select id="status-modal">
-              <option value="novo" selected>Novo</option>
-              <option value="realizando">Realizando</option>
-              <option value="entregue">Entregue</option>
-            </select>
-            <input type="date" id="data-modal">
-            <input type="text" id="tipo-modal" placeholder="Tipo">
-            <textarea id="obs-modal" rows="1" placeholder="Observações"></textarea>
-            <button type="submit" class="btn-panel">Salvar</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- FIREBASE + CRM SCRIPT -->
-<script type="module">
-// --- Firebase ---
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
-import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBnKmIAnR80BzMv9oVeKWgF_ZQVZbdAfew",
-  authDomain: "crm23-7beb7.firebaseapp.com",
-  databaseURL: "https://crm23-7beb7-default-rtdb.firebaseio.com",
-  projectId: "crm23-7beb7",
-  storageBucket: "crm23-7beb7.appspot.com",
-  messagingSenderId: "219795920284",
-  appId: "1:219795920284:web:9817ab18b0f098e8f4e459",
-  measurementId: "G-ZLELD4MVLF"
-};
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const clientesRef = ref(db, 'clientes');
-
-// -- VISUAL --
-function getFlagEmojiByPhone(phone) {
-  if (!phone) return '';
-  const code = phone.replace(/[^\d\+]/g,'');
-  if (code.startsWith('+258')) return '🇲🇿';
-  if (code.startsWith('+351')) return '🇵🇹';
-  if (code.startsWith('+81')) return '🇯🇵';
-  if (code.startsWith('+55')) return '🇧🇷';
-  if (code.startsWith('+244')) return '🇦🇴';
-  if (code.startsWith('+1')) return '🇺🇸';
-  if (code.startsWith('+33')) return '🇫🇷';
-  return '🌐';
-}
-function getWhatsappSVG() {
-  return `<svg class='wa-icon' viewBox='0 0 32 32'><circle fill='#25D366' cx='16' cy='16' r='16'/><path fill='#fff' d='M25.7 22.8c-.3-.2-1.6-.8-1.8-.9s-.4-.1-.6.2c-.2.3-.7.9-.9 1-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.2-1.2-.8-.6-1.5-1.3-1.8-1.6-.2-.3 0-.5.1-.6.1-.2.3-.4.5-.7.1-.2.2-.3.3-.5.1-.2.1-.3 0-.5 0-.1-.6-1.5-.8-2.1-.2-.6-.4-.5-.6-.5h-.5c-.1 0-.3 0-.5.2-.2.3-1.1 1-1.1 2.6 0 1.6 1.1 3.1 3.4 4.1 2.4 1 3.8 1 4.7.9.3 0 .9-.3 1-1 .1-.5.1-1 .1-1.2 0-.2-.1-.3-.2-.3z'/></svg>`;
-}
-// -- CRUD FIREBASE --
-function getClientesFirebase(cb) {
-  onValue(clientesRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    cb(data);
-  });
-}
-function addClienteFirebase(cliente) {
-  const newRef = push(clientesRef);
-  update(newRef, cliente);
-}
-function saveClienteFirebase(id, cliente) {
-  update(ref(db, 'clientes/' + id), cliente);
-}
-function removeClienteFirebase(id) {
-  remove(ref(db, 'clientes/' + id));
-}
-// --- RENDERIZAÇÃO
-let clientesCache = {};
-function renderClientes(clientes) {
-  clientesCache = clientes || {};
-  const busca = document.getElementById('busca').value.toLowerCase();
-  const filtroStatus = document.getElementById('filtro-status').value;
-  const filtroPrioridade = document.getElementAqui está o código do seu CRM PAINEL LATERAL **com filtro por status e prioridade** já integrado ao Firebase Realtime Database, 100% visual para desktop e mobile!  
-Basta copiar e colar como seu `index.html` (não usa localStorage, só banco na nuvem!):
-
----
-
-```html
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>CRM Visual - Painel Lateral (Firebase)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    :root {
-      --azul: #2157be;
-      --azul2: #113a81;
-      --azul-claro: #5fa8ff;
-      --verde: #26cb67;
-      --bg: #f7f9fb;
-      --card: #fff;
-      --cinza: #e5e9ef;
-      --cinza-txt: #687387;
-      --cinza2: #dde2ed;
-      --shadow: 0 3px 18px #0002;
-      --radius: 16px;
-    }
-    body {background: var(--bg);margin: 0;font-family: 'Segoe UI', Arial, sans-serif;color: #1a2636;}
-    .crm-main {display: flex;min-height: 100vh;gap: 22px;padding: 24px 0;max-width: 1360px;margin: 0 auto;justify-content: flex-start;align-items: flex-start;}
-    .side-panel {width: 310px;background: var(--azul);border-radius: var(--radius);box-shadow: var(--shadow);color: #fff;padding: 26px 22px 18px 22px;display: flex;flex-direction: column;gap: 17px;min-height: 640px;align-self: flex-start;}
-    .side-panel h2 {font-size: 1.08em;margin: 0 0 6px 0;font-weight: 400;opacity: .93;letter-spacing: 0.2px;}
-    .valor-total {font-size: 2em;font-weight: bold;margin-bottom: 8px;letter-spacing: .2px;color: #fff;}
-    .btn-panel, .btn-panel-outline {width: 100%;padding: 11px 0;border-radius: 10px;font-size: 1.13em;font-weight: bold;cursor: pointer;margin-bottom: 5px;border: none;transition: background .18s, color .16s;background: #fff;color: var(--azul2);box-shadow: 0 1.5px 8px #123a8130;display: flex;align-items: center;gap: 10px;justify-content: center;}
-    .btn-panel-outline {background: none;border: 2px solid #fff;color: #fff;box-shadow: none;margin-bottom: 4px;}
-    .btn-panel:hover { background: var(--azul-claro); color: #fff; }
-    .btn-panel-outline:hover { background: #fff; color: var(--azul2); }
-    .side-card {background: var(--card);border-radius: 12px;box-shadow: 0 1.5px 9px #1a3b6b13;margin: 0 0 6px 0;padding: 16px 18px;display: flex;flex-direction: column;gap: 5px;color: var(--azul2);font-weight: bold;font-size: 1.14em;border-left: 5px solid var(--cinza);position: relative;}
-    .side-card.total-realizando {border-left: 5px solid #fedc79;background: #fffbe7;color: #a68404;}
-    .side-card.total-entregue {border-left: 5px solid var(--verde);background: #f2fff6;color: var(--verde);}
-    .side-card.total-clientes {border-left: 5px solid var(--azul2);background: #f4f8ff;}
-    .side-card .lbl { color: var(--cinza-txt); font-size: .93em; font-weight: 400; letter-spacing: 0; margin-bottom: 1.5px; }
-    .side-card .valor { font-size: 1.4em; font-weight: bold; }
-    .search-panel {width: 100%;margin-top: 6px;}
-    .search-panel input {width: 100%;border: none;border-radius: 8px;padding: 9px 13px;background: var(--cinza2);font-size: 1em;margin-top: 2px;color: #18315b;}
-    .search-filtros {display: flex;gap:8px;margin-top:7px;}
-    .search-filtros select {flex:1;padding:8px 7px;border-radius:8px;border:none;}
-    .main-content {flex: 1 1 0%;min-width: 0;}
-    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; margin-top: 4px; margin-bottom: 18px;}
-    .crm-card { background: #fff; border-radius: var(--radius); box-shadow: 0 2px 12px #0001; padding: 25px 20px 16px 20px; display: flex; flex-direction: column; gap: 12px; position: relative; border: 2.5px solid #e7eefd; transition: box-shadow .18s, transform .16s, border .2s, background .2s; min-height: 180px; min-width: 210px; max-width: 380px; word-break: break-all;}
-    .crm-card:hover { box-shadow: 0 8px 32px #4e97ff19; border: 2.5px solid var(--azul2); transform: translateY(-2px) scale(1.015);}
-    .crm-card.status-realizando { background: #fffbe9; color: #554202; }
-    .card-header-row { display: flex; align-items: center; gap: 9px; justify-content: space-between; }
-    .cliente-nome { font-size: 1.25em; font-weight: bold; color: var(--azul2); letter-spacing: 1px; margin-bottom: 1px; }
-    .cliente-empresa { font-size: 1em; font-weight: 500; color: var(--cinza-txt); margin-bottom: 5px; }
-    .prioridade-badge, .status-badge { padding: 4px 11px; border-radius: 12px; font-size: 0.96em; font-weight: bold; margin-right: 8px; margin-bottom: 4px; box-shadow: 0 2px 8px #0001; border: none; letter-spacing: 0.5px; display: inline-block;}
-    .prioridade-alta { background: #fed4d4; color: #b30303; }
-    .prioridade-media { background: #ffe6a5; color: #967d03;}
-    .prioridade-baixa { background: #b3e6ff; color: #0d5167;}
-    .status-entregue { background: #e5fcef; color: #26cb67; }
-    .status-novo { background: #e5f2ff; color: var(--azul2); }
-    .status-realizando { background: #fffbe9; color: #c9a204;}
-    .crm-card .valor { font-size: 1.08em; font-weight: bold; color: var(--azul);}
-    .crm-card .tipo { color: var(--verde); font-size: 1.02em; margin-left: 1px;}
-    .crm-card .data { color: var(--cinza-txt); font-size: 0.97em;}
-    .crm-card .obs { color: #222; font-size: 1em; margin-top: 6px; border-left: 3px solid var(--azul); padding-left: 9px; opacity: .92;}
-    .card-actions { display: flex; gap: 10px; margin-top: 6px; margin-bottom: -5px; }
-    .card-actions .btn { padding: 7px 16px; font-size: 1em; min-width: 76px; border-radius: 8px; background: var(--azul-claro); color: #fff; border: none; }
-    .card-actions .btn:hover { background: var(--azul2); }
-    .whatsapp {color: #234e8e;font-weight: 500;font-size: 1.04em;display: flex;align-items: center;gap: 6px;margin-top: 3px;margin-bottom: 4px;}
-    .flag-icon {width: 23px;height: 17px;border-radius: 3px;object-fit: cover;border: 1px solid #aaa3;box-shadow: 0 1px 5px #0002;font-size: 1.22em;display: inline-block;background: #f7f9fb;text-align: center;}
-    .wa-icon {width: 21px;height: 21px;border-radius: 4px;margin-left: 3px;cursor: pointer;filter: drop-shadow(0 2px 4px #0003);transition: filter .14s;display: inline-block;}
-    .wa-icon:hover { filter: brightness(1.13) drop-shadow(0 2px 6px #00e674aa); }
-    @media (max-width: 1000px) {.crm-main { flex-direction: column; align-items: stretch; } .side-panel { width: 98%; min-width: 0; margin: 0 auto 16px auto; }}
-    @media (max-width: 600px) {.side-panel {padding:12px 3vw 12px 3vw;} .cards-grid {grid-template-columns: 1fr;} .crm-card{padding: 16px 7px 12px 7px;} }
-  </style>
-</head>
-<body>
-<div class="crm-main">
-  <!-- Painel lateral -->
-  <div class="side-panel">
-    <div>
-      <h2>Total de Serviços</h2>
-      <div class="valor-total" id="total-servicos">R$ 0,00</div>
-    </div>
-    <button class="btn-panel" onclick="abrirModal()">+ Novo Cliente</button>
-    <button class="btn-panel-outline" onclick="exportarClientes()">&#128190; Exportar</button>
-    <button class="btn-panel-outline" onclick="document.getElementById('import-file').click()">&#128190; Importar</button>
-    <div class="side-card total-realizando"><span class="lbl">Total Realizando</span><span class="valor" id="total-realizando">0</span></div>
-    <div class="side-card total-entregue"><span class="lbl">Total Entregue</span><span class="valor" id="total-entregue">0</span></div>
-    <div class="side-card total-clientes"><span class="lbl">Total de Clientes</span><span class="valor" id="total-clientes">0</span></div>
-    <div class="search-panel">
       <input type="text" id="busca" placeholder="🔍 Buscar clientes...">
       <div class="search-filtros">
         <select id="filtro-status">
@@ -306,7 +104,7 @@ Basta copiar e colar como seu `index.html` (não usa localStorage, só banco na 
   <div class="main-content">
     <div class="cards-grid" id="clientes-grid"></div>
     <!-- Modal -->
-    <div class="modal-bg" id="modal-novo" style="display:none;">
+    <div class="modal-bg" id="modal-novo" style="display:none;position:fixed;z-index:999;background:#0008;top:0;left:0;width:100vw;height:100vh;align-items:center;justify-content:center;">
       <div class="modal-content" style="background:#fff;border-radius:16px;box-shadow:0 4px 36px #123a8140;padding:30px 22px;max-width:500px;margin:0 auto;">
         <button class="modal-close" style="position:absolute;top:12px;right:20px;font-size:2.1em;background:none;border:none;color:#113a81;cursor:pointer;" onclick="fecharModal()">&times;</button>
         <div class="modal-title" style="font-weight:bold;font-size:1.3em;color:#2157be;margin-bottom:17px;">Adicionar Novo Cliente</div>
@@ -356,7 +154,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const clientesRef = ref(db, 'clientes');
 
-// --- Visual helpers ---
+// VISUAL helpers
 function getFlagEmojiByPhone(phone) {
   if (!phone) return '';
   const code = phone.replace(/[^\d\+]/g,'');
@@ -372,7 +170,7 @@ function getFlagEmojiByPhone(phone) {
 function getWhatsappSVG() {
   return `<svg class='wa-icon' viewBox='0 0 32 32'><circle fill='#25D366' cx='16' cy='16' r='16'/><path fill='#fff' d='M25.7 22.8c-.3-.2-1.6-.8-1.8-.9s-.4-.1-.6.2c-.2.3-.7.9-.9 1-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.2-1.2-.8-.6-1.5-1.3-1.8-1.6-.2-.3 0-.5.1-.6.1-.2.3-.4.5-.7.1-.2.2-.3.3-.5.1-.2.1-.3 0-.5 0-.1-.6-1.5-.8-2.1-.2-.6-.4-.5-.6-.5h-.5c-.1 0-.3 0-.5.2-.2.3-1.1 1-1.1 2.6 0 1.6 1.1 3.1 3.4 4.1 2.4 1 3.8 1 4.7.9.3 0 .9-.3 1-1 .1-.5.1-1 .1-1.2 0-.2-.1-.3-.2-.3z'/></svg>`;
 }
-// --- CRUD Firebase ---
+// CRUD Firebase
 function getClientesFirebase(cb) {
   onValue(clientesRef, (snapshot) => {
     const data = snapshot.val() || {};
@@ -380,28 +178,149 @@ function getClientesFirebase(cb) {
   });
 }
 function addClienteFirebase(cliente) {
-  const newRefVou ajustar seu código atual para **adicionar os filtros no painel** (Status e Prioridade), e já deixar tudo pronto para uso com Firebase.  
-Veja como vai ficar a seção do painel lateral:
-
----
-
-### **1. Substitua sua `<div class="search-panel">` por este bloco:**
-
-```html
-<div class="search-panel">
-  <input type="text" id="busca" placeholder="🔍 Buscar clientes...">
-  <div style="display: flex; gap: 8px; margin-top: 7px;">
-    <select id="filtro-status" style="flex:1; padding:8px 7px; border-radius:8px; border:none;">
-      <option value="">Status</option>
-      <option value="realizando">Realizando</option>
-      <option value="entregue">Entregue</option>
-      <option value="novo">Novo</option>
-    </select>
-    <select id="filtro-prioridade" style="flex:1; padding:8px 7px; border-radius:8px; border:none;">
-      <option value="">Prioridade</option>
-      <option value="alta">Alta</option>
-      <option value="media">Média</option>
-      <option value="baixa">Baixa</option>
-    </select>
-  </div>
-</div>
+  const newRef = push(clientesRef);
+  update(newRef, cliente);
+}
+function saveClienteFirebase(id, cliente) {
+  update(ref(db, 'clientes/' + id), cliente);
+}
+function removeClienteFirebase(id) {
+  remove(ref(db, 'clientes/' + id));
+}
+// --- CRM Render
+let clientesCache = {};
+function renderClientes(clientes) {
+  clientesCache = clientes || {};
+  const busca = document.getElementById('busca').value.toLowerCase();
+  const filtroStatus = document.getElementById('filtro-status').value;
+  const filtroPrioridade = document.getElementById('filtro-prioridade').value;
+  const grid = document.getElementById('clientes-grid');
+  grid.innerHTML = '';
+  let totalRealizando = 0, totalEntregue = 0, totalValor = 0, totalClientes = 0;
+  Object.entries(clientes).forEach(([id, c]) => {
+    if (
+      (busca && !((c.nome||"").toLowerCase().includes(busca) || (c.empresa||"").toLowerCase().includes(busca) || (c.contato||"").toLowerCase().includes(busca)))
+      || (filtroStatus && c.status !== filtroStatus)
+      || (filtroPrioridade && c.prioridade !== filtroPrioridade)
+    ) return;
+    totalClientes++;
+    if (c.status === "realizando") totalRealizando++;
+    if (c.status === "entregue") totalEntregue++;
+    totalValor += Number(c.valor || 0);
+    const card = document.createElement('div');
+    let cardClass = 'crm-card prioridade-' + (c.prioridade||"media") + ' status-' + (c.status||"novo");
+    card.className = cardClass;
+    card.innerHTML = `
+      <div class="card-header-row">
+        <span class="cliente-nome">${c.nome || ''}</span>
+        <span class="prioridade-badge prioridade-${c.prioridade||"media"}">
+          ${(c.prioridade||"media").charAt(0).toUpperCase() + (c.prioridade||"media").slice(1)}
+        </span>
+      </div>
+      <div class="cliente-empresa">${c.empresa || ''}</div>
+      <span class="status-badge status-${c.status||"novo"}">
+        ${(c.status||"novo").charAt(0).toUpperCase() + (c.status||"novo").slice(1)}
+      </span>
+      <div class="whatsapp">
+        <span class="flag-icon" style="font-size:1.15em;">${getFlagEmojiByPhone(c.contato)}</span>
+        <span>${c.contato || ''}</span>
+        <a href="https://wa.me/${(c.contato||'').replace(/\\D/g,'')}" target="_blank" title="Chamar no WhatsApp">${getWhatsappSVG()}</a>
+      </div>
+      <div class="valor">Valor: R$ ${Number(c.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+      <div class="tipo">Tipo: ${c.tipo || ''}</div>
+      <div class="data">Data: ${c.data || ''}</div>
+      ${c.obs ? `<div class="obs">${c.obs}</div>` : ''}
+      <div class="card-actions">
+        <button class="btn" onclick="editarCliente('${id}')">Editar</button>
+        <button class="btn" style="background:#fed4d4;color:#b30303;" onclick="removerCliente('${id}')">Excluir</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  document.getElementById('total-realizando').innerText = totalRealizando;
+  document.getElementById('total-entregue').innerText = totalEntregue;
+  document.getElementById('total-clientes').innerText = totalClientes;
+  document.getElementById('total-servicos').innerText = "R$ " + totalValor.toLocaleString('pt-BR', {minimumFractionDigits:2});
+}
+window.abrirModal = function() {
+  document.getElementById('modal-novo').style.display = 'flex';
+  document.getElementById('cliente-form-modal').reset();
+  document.getElementById('cliente-id-modal').value = '';
+}
+window.fecharModal = function() {
+  document.getElementById('modal-novo').style.display = 'none';
+}
+document.getElementById('modal-novo').onclick = function(e) {
+  if (e.target.classList.contains('modal-bg')) fecharModal();
+};
+document.getElementById('cliente-form-modal').onsubmit = function(e){
+  e.preventDefault();
+  const id = document.getElementById('cliente-id-modal').value || undefined;
+  const cliente = {
+    nome: document.getElementById('nome-modal').value,
+    empresa: document.getElementById('empresa-modal').value,
+    contato: document.getElementById('contato-modal').value,
+    valor: document.getElementById('valor-modal').value,
+    prioridade: document.getElementById('prioridade-modal').value,
+    status: document.getElementById('status-modal').value,
+    data: document.getElementById('data-modal').value,
+    tipo: document.getElementById('tipo-modal').value,
+    obs: document.getElementById('obs-modal').value
+  };
+  if (!id) addClienteFirebase(cliente);
+  else saveClienteFirebase(id, cliente);
+  fecharModal();
+};
+window.editarCliente = function(id){
+  const c = clientesCache[id];
+  abrirModal();
+  document.getElementById('cliente-id-modal').value = id;
+  document.getElementById('nome-modal').value = c.nome || '';
+  document.getElementById('empresa-modal').value = c.empresa || '';
+  document.getElementById('contato-modal').value = c.contato || '';
+  document.getElementById('valor-modal').value = c.valor || '';
+  document.getElementById('prioridade-modal').value = c.prioridade || 'media';
+  document.getElementById('status-modal').value = c.status || 'novo';
+  document.getElementById('data-modal').value = c.data || '';
+  document.getElementById('tipo-modal').value = c.tipo || '';
+  document.getElementById('obs-modal').value = c.obs || '';
+}
+window.removerCliente = function(id){
+  if (confirm('Excluir este cliente?')) removeClienteFirebase(id);
+}
+document.getElementById('busca').oninput =
+document.getElementById('filtro-status').onchange =
+document.getElementById('filtro-prioridade').onchange =
+function() { renderClientes(clientesCache); };
+// Exportar
+window.exportarClientes = function() {
+  const blob = new Blob([JSON.stringify(clientesCache, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'clientes.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+// Importar
+document.getElementById('import-file').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      let json = JSON.parse(ev.target.result);
+      if (json.clientes) json = json.clientes;
+      Object.entries(json).forEach(([_, cliente]) => addClienteFirebase(cliente));
+      alert('Importado com sucesso!');
+    } catch {
+      alert('Arquivo inválido!');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+getClientesFirebase(renderClientes);
+</script>
+</body>
+</html>
